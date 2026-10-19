@@ -5,14 +5,14 @@
 #
 # 做什么（对照 evcharger RUNBOOK §2.0「服务器侧一次性授权」）：
 #   1. 建组 msdeploy，把 runner 用户 ghrunner 放进去
-#   2. 建 $MS_ROOT/{releases,data}（缺省 /mnt/data/MassageStart），归组可写、setgid；目录已存在则只补权限
-#   3. 写 /mnt/data/MassageStart/.env.production（已存在则不动）
+#   2. 建 $MS_ROOT/{releases,data}（缺省 /mnt/data/massage-starter），归组可写、setgid；目录已存在则只补权限
+#   3. 写 /mnt/data/massage-starter/.env.production（已存在则不动）
 #   4. 装 systemd 单元 evidence-tuina（node 路径按本机探测，可用 NODE_BIN 覆盖）
 #   5. sudoers：只允许 ghrunner 重启 evidence-tuina 这一个服务
 # 不做什么：不拉代码（代码由 Actions 用临时令牌拉）、不改 nginx（tools/ops/nginx-site.py）、不申请证书。
 set -euo pipefail
 
-MS_ROOT="${MS_ROOT:-/mnt/data/MassageStart}"
+MS_ROOT="${MS_ROOT:-/mnt/data/massage-starter}"
 MS_USER="${MS_USER:-ghrunner}"
 MS_GROUP="${MS_GROUP:-msdeploy}"
 MS_PORT="${MS_PORT:-9600}"

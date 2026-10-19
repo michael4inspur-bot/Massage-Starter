@@ -6,7 +6,7 @@
 
 ## 0. 给服务器命令之前
 
-1. 账号 / 路径照抄 `tools/ops/ms-status.sh` 缺省值：代码与数据 `/mnt/data/MassageStart`，服务 `evidence-tuina`，端口 `9600`，runner 用户 `ghrunner`，组 `msdeploy`。
+1. 账号 / 路径照抄 `tools/ops/ms-status.sh` 缺省值：代码与数据 `/mnt/data/massage-starter`，服务 `evidence-tuina`，端口 `9600`，runner 用户 `ghrunner`，组 `msdeploy`。
 2. 服务器上看到 `Username for 'https://github.com'` 就 **Ctrl+C**，永远不输凭据；拉代码只走 Actions（临时令牌）。
 3. 在服务器上**单条执行**命令，不要整段粘贴（`certbot` 会弹交互）。
 4. 触发部署前先看最近 3 次运行，有正在跑的就不要再点（跑到一半的部署不要取消）。
@@ -15,10 +15,10 @@
 
 | 项 | 值 |
 |---|---|
-| 代码 | `/mnt/data/MassageStart`（git，分支 `main`，Actions 用临时令牌 fast-forward） |
-| 产物 | `/mnt/data/MassageStart/releases/<sha>-<时刻>/`（Next.js standalone），`current` 符号链接指向在用的一份，`current.prev` 记上一份 |
-| 进程 | systemd `evidence-tuina`：`node server.js`，`User=ghrunner`，`EnvironmentFile=/mnt/data/MassageStart/.env.production`，`Restart=always` |
-| 数据 | SQLite `/mnt/data/MassageStart/data/evidence-tuina.db`（`DATABASE_URL` 在 `.env.production`） |
+| 代码 | `/mnt/data/massage-starter`（git，分支 `main`，Actions 用临时令牌 fast-forward） |
+| 产物 | `/mnt/data/massage-starter/releases/<sha>-<时刻>/`（Next.js standalone），`current` 符号链接指向在用的一份，`current.prev` 记上一份 |
+| 进程 | systemd `evidence-tuina`：`node server.js`，`User=ghrunner`，`EnvironmentFile=/mnt/data/massage-starter/.env.production`，`Restart=always` |
+| 数据 | SQLite `/mnt/data/massage-starter/data/evidence-tuina.db`（`DATABASE_URL` 在 `.env.production`） |
 | 入口 | nginx `/etc/nginx/nginx.conf` 的 http 块里 `# >>> MS SITE ... <<<` 受管块：80 跳转 + 443 反代 127.0.0.1:9600；证书 `/etc/letsencrypt/live/ms.port.et/` |
 | 探活 | `GET /api/health` → `{ok, commit, db}`；部署脚本重启后轮询它，非 200 回滚 |
 | 构建 | **不在联调机上构建**（`next build` 峰值约 800 MB）。GitHub 托管 runner 构建 → artifact → 联调机 runner 换入 |
@@ -52,7 +52,7 @@ runner 是**仓库级**的（个人账户没有组织级 runner），evcharger �
    验收判据：`systemctl list-units 'actions.runner.*'` 里多了一条、GitHub 页面 Runners 显示 `ms-pilot` Idle。手工 `./run.sh` 起的 runner 终端一断就死（evcharger RUNBOOK §5.1）。
 
 ### 2.3 引导（root，一次）
-1. GitHub → Actions → **Deploy to pilot** → Run workflow（分支 main，`dry_run=true`）。Preflight 会把 `tools/ops/` 复制到联调机 `/tmp/ms-ops/`，然后因为 `/mnt/data/MassageStart` 不存在而报错停下——这是预期的。
+1. GitHub → Actions → **Deploy to pilot** → Run workflow（分支 main，`dry_run=true`）。Preflight 会把 `tools/ops/` 复制到联调机 `/tmp/ms-ops/`，然后因为 `/mnt/data/massage-starter` 不存在而报错停下——这是预期的。
 2. 联调机 root：
    ```bash
    sudo bash /tmp/ms-ops/bootstrap-server.sh
@@ -66,17 +66,17 @@ Actions → Deploy to pilot → `dry_run=false`、`build_on=hosted`。build 任�
 
 ### 2.5 nginx + 证书（root）
 ```bash
-python3 /mnt/data/MassageStart/tools/ops/nginx-site.py --dry-run     # 看 diff；候选已过 nginx -t
-python3 /mnt/data/MassageStart/tools/ops/nginx-site.py && systemctl reload nginx     # 此时只写 80 块（还没证书）
+python3 /mnt/data/massage-starter/tools/ops/nginx-site.py --dry-run     # 看 diff；候选已过 nginx -t
+python3 /mnt/data/massage-starter/tools/ops/nginx-site.py && systemctl reload nginx     # 此时只写 80 块（还没证书）
 certbot certonly --nginx -d ms.port.et                                                  # 单条执行；沿用机器上已有的 Let's Encrypt 账号
-python3 /mnt/data/MassageStart/tools/ops/nginx-site.py && systemctl reload nginx     # 证书已存在 → 受管块升级为 443 + 80 跳转
+python3 /mnt/data/massage-starter/tools/ops/nginx-site.py && systemctl reload nginx     # 证书已存在 → 受管块升级为 443 + 80 跳转
 ```
 受管块会把 http 块里的 `add_header` 原样搬进 server 层、只替换 CSP（Next.js 的内联 hydration 脚本需要 `'unsafe-inline'`）。
 续期不用管：`certbot renew` 沿用 nginx 插件，80 块里保持 `server_name ms.port.et` 即可。
 
 ### 2.6 验收
 ```bash
-bash /mnt/data/MassageStart/tools/ops/ms-status.sh
+bash /mnt/data/massage-starter/tools/ops/ms-status.sh
 curl -s https://ms.port.et/api/health      # {"ok":true,"commit":"<main 的 sha>","db":"ok",...}
 ```
 手机 / 电脑打开 `https://ms.port.et/`，首次进入应弹出红旗征筛查。
@@ -86,14 +86,14 @@ Actions → Deploy to pilot → `dry_run=false`。两分钟左右。失败时脚
 
 手工（联调机，ghrunner 或 root）：
 ```bash
-bash /mnt/data/MassageStart/tools/ops/deploy.sh --dry-run
-bash /mnt/data/MassageStart/tools/ops/deploy.sh -y            # 本机构建（应急，很慢）
+bash /mnt/data/massage-starter/tools/ops/deploy.sh --dry-run
+bash /mnt/data/massage-starter/tools/ops/deploy.sh -y            # 本机构建（应急，很慢）
 ```
 
 ## 4. 回滚
 ```bash
-bash /mnt/data/MassageStart/tools/ops/deploy.sh --rollback     # current 指回 current.prev，重启，探活
-python3 /mnt/data/MassageStart/tools/ops/nginx-site.py --rollback && nginx -t && systemctl reload nginx   # 只回滚 nginx
+bash /mnt/data/massage-starter/tools/ops/deploy.sh --rollback     # current 指回 current.prev，重启，探活
+python3 /mnt/data/massage-starter/tools/ops/nginx-site.py --rollback && nginx -t && systemctl reload nginx   # 只回滚 nginx
 ```
 
 ## 5. 常见问题
@@ -103,6 +103,6 @@ python3 /mnt/data/MassageStart/tools/ops/nginx-site.py --rollback && nginx -t &&
 | Preflight `不可写` | bootstrap 后没重启 runner 服务，附加组没生效 |
 | `预构建产物的提交 ≠ 联调机 HEAD` | 构建与部署之间又合并了 main，重新触发一次 |
 | `npm ci` 卡在下载 Prisma 引擎 | 联调机间歇性出网故障（evcharger RUNBOOK §1 已知风险），稍后重试；产物本身自带 RHEL 引擎，不依赖这一步的下载 |
-| `/api/health` 503 `db: error` | `.env.production` 的 `DATABASE_URL` 路径对 ghrunner 不可写，或 `data/` 目录权限；`ls -la /mnt/data/MassageStart/data` |
+| `/api/health` 503 `db: error` | `.env.production` 的 `DATABASE_URL` 路径对 ghrunner 不可写，或 `data/` 目录权限；`ls -la /mnt/data/massage-starter/data` |
 | 页面空白、控制台 CSP 报错 | 受管块的 CSP 被 http 块新加的头覆盖？重跑 `nginx-site.py`，它会重新搬 http 块的头 |
 | `certbot certonly --nginx` 找不到 server 块 | 先跑一次 `nginx-site.py`（80 块必须先存在） |

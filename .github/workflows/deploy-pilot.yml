@@ -3,7 +3,7 @@ name: Deploy to pilot
 # EvidenceTuina 联调机部署（ms.port.et），手动触发。
 # 对照 evcharger 的 .github/workflows/deploy-pilot.yml，三条约定同样适用：
 #   ① 部署不能被取消（cancel-in-progress: false）：在 systemctl restart 与探活之间被杀会留下停机服务。
-#   ② 脚本从 runner 的 checkout 里跑，不从 /mnt/data/MassageStart 里跑（deploy.sh 会 git pull 它自己所在的仓库）。
+#   ② 脚本从 runner 的 checkout 里跑，不从 /mnt/data/massage-starter 里跑（deploy.sh 会 git pull 它自己所在的仓库）。
 #   ③ 只允许从 main 触发。
 #   ④ 构建不在联调机上做：next build 进程树峰值约 800 MB，联调机可用内存只剩几百 MB。缺省 build_on=hosted ——
 #      在 GitHub 托管 runner（ubuntu-latest，x86_64 与联调机一致）构建，产物经 artifact 交给联调机 runner 换入
@@ -70,7 +70,7 @@ jobs:
     runs-on: [self-hosted, pilot]
     timeout-minutes: 40
     env:
-      MS_REPO: /mnt/data/MassageStart
+      MS_REPO: /mnt/data/massage-starter
 
     steps:
       - name: 拒绝从 main 以外的分支部署

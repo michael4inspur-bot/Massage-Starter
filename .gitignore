@@ -8,7 +8,7 @@ out
 prisma/*.db
 prisma/*.db-journal
 tsconfig.tsbuildinfo
-# 联调机部署目录（/mnt/data/MassageStart）里运行期产生的文件
+# 联调机部署目录（/mnt/data/massage-starter）里运行期产生的文件
 /releases/
 /data/
 /current

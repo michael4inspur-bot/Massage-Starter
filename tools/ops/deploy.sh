@@ -17,7 +17,7 @@
 #
 # 选项：--dry-run  -y|--yes  --skip-pull  --skip-deps  --prebuilt DIR  --rollback
 # 环境变量（缺省对应联调机）：
-#   MS_REPO=/mnt/data/MassageStart   MS_BRANCH=main   MS_PORT=9600   MS_SERVICE=evidence-tuina
+#   MS_REPO=/mnt/data/massage-starter   MS_BRANCH=main   MS_PORT=9600   MS_SERVICE=evidence-tuina
 #   MS_GIT_URL=https://github.com/michael4inspur-bot/Massage-Starter.git（仅首次 clone）
 #   MS_HEALTH_TIMEOUT=45   MS_KEEP_RELEASES=3
 #   MS_RESTART_CMD   覆盖重启命令（本地自测用；缺省 root 直接 systemctl，否则 sudo -n systemctl）
@@ -25,7 +25,7 @@
 set -euo pipefail
 umask 0002
 
-MS_REPO="${MS_REPO:-/mnt/data/MassageStart}"
+MS_REPO="${MS_REPO:-/mnt/data/massage-starter}"
 MS_BRANCH="${MS_BRANCH:-main}"
 MS_PORT="${MS_PORT:-9600}"
 MS_SERVICE="${MS_SERVICE:-evidence-tuina}"
