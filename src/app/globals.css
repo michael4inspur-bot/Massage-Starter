@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink-950: #070b16;
+  --color-ink-900: #0b1020;
+  --color-ink-800: #121a30;
+  --color-ink-700: #1b2541;
+  --color-ink-600: #273355;
+  --color-mint-400: #4fd1b5;
+  --color-mint-500: #2bb79a;
+  --color-amber-400: #f6b73c;
+  --color-coral-500: #ef5a5a;
+  --color-sky-400: #5aa9f6;
+  --font-sans: "Inter", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: var(--color-ink-900);
+  color: #e6eaf4;
+  min-height: 100%;
+}
+
+body {
+  background-image:
+    radial-gradient(1200px 600px at 10% -10%, rgba(79, 209, 181, 0.08), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(90, 169, 246, 0.08), transparent 60%);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ink-600) transparent;
+}
+
+.card {
+  @apply rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-sm;
+}
+
+.pill {
+  @apply inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-0.5 text-xs font-medium;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  100% { transform: scale(1.6); opacity: 0; }
+}

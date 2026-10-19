@@ -1,0 +1,15 @@
+services:
+  evidence-tuina:
+    build: .
+    container_name: evidence-tuina
+    ports:
+      - "9600:9600"
+    environment:
+      PORT: "9600"
+      DATABASE_URL: "file:/app/data/evidence-tuina.db"
+    volumes:
+      - tuina-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  tuina-data:
