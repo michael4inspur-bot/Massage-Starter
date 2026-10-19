@@ -1,0 +1,25 @@
+# EvidenceTuina（ms.port.et）systemd 单元模板。tools/ops/bootstrap-server.sh 会把 __NODE_BIN__ 换成实际 node 路径后
+# 装到 /etc/systemd/system/evidence-tuina.service。应用监听 127.0.0.1:9600，只由 nginx 反代，不开防火墙端口。
+[Unit]
+Description=EvidenceTuina 循证推拿实验室 (Next.js, 127.0.0.1:9600)
+After=network.target
+
+[Service]
+Type=simple
+User=ghrunner
+Group=msdeploy
+WorkingDirectory=/mnt/data/massage-starter/current
+EnvironmentFile=/mnt/data/massage-starter/.env.production
+# 没有发布过产物时不要反复起停
+ExecStartPre=/usr/bin/test -f /mnt/data/massage-starter/current/server.js
+ExecStart=__NODE_BIN__ server.js
+Restart=always
+RestartSec=3
+# 联调机内存紧张：堆上限 512 MB，到顶抛可读的 OOM 而不是拖死整机
+Environment=NODE_OPTIONS=--max-old-space-size=512
+LimitNOFILE=65536
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

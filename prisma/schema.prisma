@@ -2,6 +2,10 @@
 // 默认 SQLite；切换 PostgreSQL 只需把 provider 改为 "postgresql" 并更新 DATABASE_URL
 generator client {
   provider = "prisma-client-js"
+  // 联调机是 CentOS 系（tools/ops/bootstrap-server.sh 会打印实际 OpenSSL 版本）；
+  // 构建在 GitHub 托管 runner（Debian）上做，所以把 RHEL 三个 OpenSSL 版本的引擎都带上，
+  // 产物换入联调机后不再需要联网下引擎。
+  binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-1.1.x", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
