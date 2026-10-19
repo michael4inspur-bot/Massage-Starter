@@ -86,8 +86,12 @@ jobs:
         run: |
           echo "runner 用户：$(id -un) (uid=$(id -u))  组：$(id -Gn)"
           echo "node：$(command -v node || echo 无) $(node -v 2>/dev/null || true)"
-          rm -rf /tmp/ms-ops && mkdir -p /tmp/ms-ops && cp -a tools/ops/. /tmp/ms-ops/ && chmod -R a+rX /tmp/ms-ops
-          echo "tools/ops 已复制到 /tmp/ms-ops（root 一次性引导：sudo bash /tmp/ms-ops/bootstrap-server.sh）"
+          # 只是给 root 备一份最新脚本，失败不拦部署（例如 /tmp/ms-ops 被 root 建过、ghrunner 删不掉）
+          if { rm -rf /tmp/ms-ops && mkdir -p /tmp/ms-ops && cp -a tools/ops/. /tmp/ms-ops/ && chmod -R a+rX /tmp/ms-ops; } 2>/dev/null; then
+            echo "tools/ops 已复制到 /tmp/ms-ops（root 可用：sudo bash /tmp/ms-ops/bootstrap-server.sh --site）"
+          else
+            echo "::warning::复制 tools/ops 到 /tmp/ms-ops 失败（目录属主不是 $(id -un)？），不影响部署"
+          fi
           if [ ! -e "$MS_REPO" ]; then
             echo "::error::$MS_REPO 不存在——先以 root 跑 sudo bash /tmp/ms-ops/bootstrap-server.sh（docs/PILOT_DEPLOY_RUNBOOK.md §2）"
             exit 1

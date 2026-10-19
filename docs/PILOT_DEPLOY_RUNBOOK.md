@@ -102,5 +102,5 @@ python3 /mnt/data/massage-starter/tools/ops/nginx-site.py --rollback && nginx -t
 | `npm ci` 卡在下载 Prisma 引擎 | 联调机间歇性出网故障（evcharger RUNBOOK §1 已知风险），稍后重试；产物本身自带 RHEL 引擎，不依赖这一步的下载 |
 | `/api/health` 503 `db: error` | `.env.production` 的 `DATABASE_URL` 路径对 ghrunner 不可写，或 `data/` 目录权限；`ls -la /mnt/data/massage-starter/data` |
 | 页面空白、控制台 CSP 报错 | 受管块的 CSP 被 http 块新加的头覆盖？重跑 `nginx-site.py`，它会重新搬 http 块的头 |
-| 证书没签下来 | DNS 未生效或 80 端口不通；修好后重跑 `sudo bash /tmp/ms-ops/bootstrap-server.sh --site` |
+| 证书没签下来 | DNS 未生效或 80 端口不通；修好后重跑 `sudo bash /root/ms-install/bootstrap-server.sh --site`（或直接重跑 `ms-install.sh`） |
 | runner 注册报 token 无效 | 令牌 1 小时过期且只能用一次，回 Runners 页面重新生成 |
