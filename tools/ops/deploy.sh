@@ -147,6 +147,26 @@ else
   warn "没有 --prebuilt：将在本机构建（next build 内存峰值约 800 MB，联调机紧张时很慢）"
 fi
 
+# 动手前确认服务器侧引导已完成，否则会在 npm ci / 建库 / 换入之后才在重启这一步失败
+if [ -z "${MS_RESTART_CMD:-}" ]; then
+  if systemctl cat "$MS_SERVICE" >/dev/null 2>&1; then
+    ok "systemd 单元 $MS_SERVICE 已安装"
+  elif [ "$DRY_RUN" = 1 ]; then
+    warn "systemd 单元 $MS_SERVICE 还没装（root 跑 tools/ops/bootstrap-server.sh）"
+  else
+    die "systemd 单元 $MS_SERVICE 还没装——先以 root 跑 tools/ops/bootstrap-server.sh"
+  fi
+  if [ "$(id -u)" != 0 ]; then
+    if sudo -n -l systemctl restart "$MS_SERVICE" >/dev/null 2>&1; then
+      ok "sudoers 允许 $(id -un) 重启 $MS_SERVICE"
+    elif [ "$DRY_RUN" = 1 ]; then
+      warn "sudoers 还不允许 $(id -un) 重启 $MS_SERVICE（bootstrap-server.sh 会写 /etc/sudoers.d/evidence-tuina-deploy）"
+    else
+      die "sudoers 不允许 $(id -un) 重启 $MS_SERVICE——先以 root 跑 tools/ops/bootstrap-server.sh"
+    fi
+  fi
+fi
+
 if [ "$ASSUME_YES" = 0 ] && [ "$DRY_RUN" = 0 ]; then
   printf '\n继续？会安装依赖、同步数据库、发布 %s 并重启 %s [y/N] ' "${NEW_SHA:0:7}" "$MS_SERVICE"
   read -r reply; case "$reply" in y|Y|yes) ;; *) echo "已取消"; exit 0 ;; esac

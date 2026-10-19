@@ -107,7 +107,8 @@ jobs:
           fi
           echo "evidence-tuina：$(systemctl is-active evidence-tuina 2>&1 || true)"
           [ -f "$MS_REPO/.env.production" ] && echo "✔ .env.production 存在" || echo "✘ 缺 .env.production（bootstrap 会写）"
-          sudo -n systemctl restart evidence-tuina --help >/dev/null 2>&1 && echo "✔ sudoers 允许重启 evidence-tuina" || echo "? sudoers 检查跳过（dry-run 不需要）"
+          systemctl cat evidence-tuina >/dev/null 2>&1 && echo "✔ systemd 单元 evidence-tuina 已安装" || echo "✘ systemd 单元 evidence-tuina 未安装（root 跑 sudo bash /tmp/ms-ops/bootstrap-server.sh）"
+          sudo -n -l systemctl restart evidence-tuina >/dev/null 2>&1 && echo "✔ sudoers 允许重启 evidence-tuina" || echo "✘ sudoers 还不允许重启 evidence-tuina（bootstrap 会写）"
           free -h || true
           df -h "$MS_REPO" || true
 

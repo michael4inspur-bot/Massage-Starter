@@ -5,7 +5,7 @@
 #
 # 做什么（对照 evcharger RUNBOOK §2.0「服务器侧一次性授权」）：
 #   1. 建组 msdeploy，把 runner 用户 ghrunner 放进去
-#   2. 建 /mnt/data/massage-starter/{releases,data}，归组可写、setgid
+#   2. 建 $MS_ROOT/{releases,data}（缺省 /mnt/data/massage-starter），归组可写、setgid；目录已存在则只补权限
 #   3. 写 /mnt/data/massage-starter/.env.production（已存在则不动）
 #   4. 装 systemd 单元 evidence-tuina（node 路径按本机探测，可用 NODE_BIN 覆盖）
 #   5. sudoers：只允许 ghrunner 重启 evidence-tuina 这一个服务
@@ -67,7 +67,8 @@ fi
 
 step "3. systemd 单元"
 UNIT=/etc/systemd/system/evidence-tuina.service
-sed "s#__NODE_BIN__#$NODE_BIN#" "$HERE/evidence-tuina.service" > "$UNIT.candidate"
+sed -e "s#__NODE_BIN__#$NODE_BIN#" -e "s#__MS_ROOT__#$MS_ROOT#g" "$HERE/evidence-tuina.service" > "$UNIT.candidate"
+grep -q "__" "$UNIT.candidate" && die "单元模板还有没替换的占位符：$(grep -n "__" "$UNIT.candidate")"
 if [ -f "$UNIT" ] && cmp -s "$UNIT" "$UNIT.candidate"; then
   rm -f "$UNIT.candidate"; ok "$UNIT 已是目标内容"
 else
