@@ -1,0 +1,62 @@
+// EvidenceTuina 持久化层
+// 默认 SQLite；切换 PostgreSQL 只需把 provider 改为 "postgresql" 并更新 DATABASE_URL
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// 匿名学员（浏览器生成的 learnerId，不采集个人信息）
+model Learner {
+  id            String            @id
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  screenings    SafetyScreening[]
+  stageProgress StageProgress[]
+  practiceLogs  PracticeLog[]
+}
+
+/// 红旗征筛查记录：每次提交清单都落一条，便于追溯"何时被阻断"
+model SafetyScreening {
+  id         Int      @id @default(autoincrement())
+  learnerId  String
+  learner    Learner  @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  flaggedIds String   // JSON 数组，勾选的红旗征 id
+  outcome    String   // "cleared" | "blocked"
+  createdAt  DateTime @default(now())
+
+  @@index([learnerId, createdAt])
+}
+
+/// 每个阶段的闯关进度
+model StageProgress {
+  id              Int       @id @default(autoincrement())
+  learnerId       String
+  learner         Learner   @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  stageId         String
+  practiceSeconds Int       @default(0)
+  quizBestScore   Int       @default(0)
+  quizPassed      Boolean   @default(false)
+  completedAt     DateTime?
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([learnerId, stageId])
+}
+
+/// 练功房每次实操会话（技术 id + 累计秒数 + 参数快照）
+model PracticeLog {
+  id          Int      @id @default(autoincrement())
+  learnerId   String
+  learner     Learner  @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  stageId     String
+  techniqueId String
+  seconds     Int
+  frequencyHz Float?
+  holdSeconds Int?
+  createdAt   DateTime @default(now())
+
+  @@index([learnerId, stageId])
+}
