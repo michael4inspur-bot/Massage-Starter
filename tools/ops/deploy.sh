@@ -17,7 +17,7 @@
 #
 # 选项：--dry-run  -y|--yes  --skip-pull  --skip-deps  --prebuilt DIR  --rollback
 # 环境变量（缺省对应联调机）：
-#   MS_REPO=/mnt/data/massage-starter   MS_BRANCH=main   MS_PORT=9600   MS_SERVICE=evidence-tuina
+#   MS_REPO=/mnt/data/MassageStart   MS_BRANCH=main   MS_PORT=9600   MS_SERVICE=evidence-tuina
 #   MS_GIT_URL=https://github.com/michael4inspur-bot/Massage-Starter.git（仅首次 clone）
 #   MS_HEALTH_TIMEOUT=45   MS_KEEP_RELEASES=3
 #   MS_RESTART_CMD   覆盖重启命令（本地自测用；缺省 root 直接 systemctl，否则 sudo -n systemctl）
@@ -25,7 +25,7 @@
 set -euo pipefail
 umask 0002
 
-MS_REPO="${MS_REPO:-/mnt/data/massage-starter}"
+MS_REPO="${MS_REPO:-/mnt/data/MassageStart}"
 MS_BRANCH="${MS_BRANCH:-main}"
 MS_PORT="${MS_PORT:-9600}"
 MS_SERVICE="${MS_SERVICE:-evidence-tuina}"
@@ -145,6 +145,26 @@ if [ -n "$PREBUILT" ]; then
   ok "预构建产物：$(tr '\n' ' ' < "$PREBUILT/BUILD_INFO")"
 else
   warn "没有 --prebuilt：将在本机构建（next build 内存峰值约 800 MB，联调机紧张时很慢）"
+fi
+
+# 动手前确认服务器侧引导已完成，否则会在 npm ci / 建库 / 换入之后才在重启这一步失败
+if [ -z "${MS_RESTART_CMD:-}" ]; then
+  if systemctl cat "$MS_SERVICE" >/dev/null 2>&1; then
+    ok "systemd 单元 $MS_SERVICE 已安装"
+  elif [ "$DRY_RUN" = 1 ]; then
+    warn "systemd 单元 $MS_SERVICE 还没装（root 跑 tools/ops/bootstrap-server.sh）"
+  else
+    die "systemd 单元 $MS_SERVICE 还没装——先以 root 跑 tools/ops/bootstrap-server.sh"
+  fi
+  if [ "$(id -u)" != 0 ]; then
+    if sudo -n -l systemctl restart "$MS_SERVICE" >/dev/null 2>&1; then
+      ok "sudoers 允许 $(id -un) 重启 $MS_SERVICE"
+    elif [ "$DRY_RUN" = 1 ]; then
+      warn "sudoers 还不允许 $(id -un) 重启 $MS_SERVICE（bootstrap-server.sh 会写 /etc/sudoers.d/evidence-tuina-deploy）"
+    else
+      die "sudoers 不允许 $(id -un) 重启 $MS_SERVICE——先以 root 跑 tools/ops/bootstrap-server.sh"
+    fi
+  fi
 fi
 
 if [ "$ASSUME_YES" = 0 ] && [ "$DRY_RUN" = 0 ]; then

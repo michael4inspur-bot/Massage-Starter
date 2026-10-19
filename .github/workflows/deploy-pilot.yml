@@ -3,7 +3,7 @@ name: Deploy to pilot
 # EvidenceTuina 联调机部署（ms.port.et），手动触发。
 # 对照 evcharger 的 .github/workflows/deploy-pilot.yml，三条约定同样适用：
 #   ① 部署不能被取消（cancel-in-progress: false）：在 systemctl restart 与探活之间被杀会留下停机服务。
-#   ② 脚本从 runner 的 checkout 里跑，不从 /mnt/data/massage-starter 里跑（deploy.sh 会 git pull 它自己所在的仓库）。
+#   ② 脚本从 runner 的 checkout 里跑，不从 /mnt/data/MassageStart 里跑（deploy.sh 会 git pull 它自己所在的仓库）。
 #   ③ 只允许从 main 触发。
 #   ④ 构建不在联调机上做：next build 进程树峰值约 800 MB，联调机可用内存只剩几百 MB。缺省 build_on=hosted ——
 #      在 GitHub 托管 runner（ubuntu-latest，x86_64 与联调机一致）构建，产物经 artifact 交给联调机 runner 换入
@@ -70,7 +70,7 @@ jobs:
     runs-on: [self-hosted, pilot]
     timeout-minutes: 40
     env:
-      MS_REPO: /mnt/data/massage-starter
+      MS_REPO: /mnt/data/MassageStart
 
     steps:
       - name: 拒绝从 main 以外的分支部署
@@ -107,7 +107,8 @@ jobs:
           fi
           echo "evidence-tuina：$(systemctl is-active evidence-tuina 2>&1 || true)"
           [ -f "$MS_REPO/.env.production" ] && echo "✔ .env.production 存在" || echo "✘ 缺 .env.production（bootstrap 会写）"
-          sudo -n systemctl restart evidence-tuina --help >/dev/null 2>&1 && echo "✔ sudoers 允许重启 evidence-tuina" || echo "? sudoers 检查跳过（dry-run 不需要）"
+          systemctl cat evidence-tuina >/dev/null 2>&1 && echo "✔ systemd 单元 evidence-tuina 已安装" || echo "✘ systemd 单元 evidence-tuina 未安装（root 跑 sudo bash /tmp/ms-ops/bootstrap-server.sh）"
+          sudo -n -l systemctl restart evidence-tuina >/dev/null 2>&1 && echo "✔ sudoers 允许重启 evidence-tuina" || echo "✘ sudoers 还不允许重启 evidence-tuina（bootstrap 会写）"
           free -h || true
           df -h "$MS_REPO" || true
 

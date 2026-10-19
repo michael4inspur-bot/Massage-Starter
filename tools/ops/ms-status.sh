@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # EvidenceTuina 联调机巡检（只读）。用法：bash tools/ops/ms-status.sh
-# 环境变量缺省对应联调机：MS_REPO=/mnt/data/massage-starter MS_PORT=9600 MS_SERVICE=evidence-tuina MS_PUBLIC_HOST=ms.port.et
+# 环境变量缺省对应联调机：MS_REPO=/mnt/data/MassageStart MS_PORT=9600 MS_SERVICE=evidence-tuina MS_PUBLIC_HOST=ms.port.et
 set -u
-MS_REPO="${MS_REPO:-/mnt/data/massage-starter}"
+MS_REPO="${MS_REPO:-/mnt/data/MassageStart}"
 MS_PORT="${MS_PORT:-9600}"
 MS_SERVICE="${MS_SERVICE:-evidence-tuina}"
 MS_PUBLIC_HOST="${MS_PUBLIC_HOST:-ms.port.et}"
