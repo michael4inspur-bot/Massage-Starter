@@ -105,12 +105,32 @@ fi
 
 # ---------- 0. 代码 ----------
 step "0. 代码（$MS_REPO @ $MS_BRANCH）"
+# 部署目录由 root 建、归 msdeploy 组（bootstrap-server.sh），ghrunner 能在里面写，但不是属主——
+# 所以不能 clone 到别处再 cp -a 整体搬进来（cp 要改目录本身的时间戳，非属主会 Operation not permitted，
+# 2026-10-19 首次正式部署 run 39320211319 就死在这里）。改为就地 git init + fetch + checkout。
+# 上次失败留下的半截 .git（rev-parse 不出 HEAD）同样就地重建。
+[ -d "$MS_REPO" ] || die "$MS_REPO 不存在——先以 root 跑 tools/ops/bootstrap-server.sh"
+[ -w "$MS_REPO" ] || die "$MS_REPO 不可写（当前用户 $(id -un)）——bootstrap 的组授权没生效？本仓库 runner 服务重启过吗"
+# 目录属主是 root、本脚本以 ghrunner 跑：git ≥ 2.35.2 会对每条命令报 "detected dubious ownership" 并退出。
+# 先把它登记进 safe.directory（幂等，不重复追加）。原先只在工作流 Preflight 里、且仅当 .git 已存在时才登记，
+# 首次部署恰好没有 .git，于是必然失败。
+if ! git config --global --get-all safe.directory 2>/dev/null | grep -qxF "$MS_REPO"; then
+  git config --global --add safe.directory "$MS_REPO"
+  ok "已把 $MS_REPO 加入 git safe.directory（属主 $(stat -c '%U' "$MS_REPO") ≠ 当前用户 $(id -un)）"
+fi
+NEED_INIT=0
 if [ ! -d "$MS_REPO/.git" ]; then
-  [ -d "$MS_REPO" ] || die "$MS_REPO 不存在——先以 root 跑 tools/ops/bootstrap-server.sh"
-  [ -w "$MS_REPO" ] || die "$MS_REPO 不可写（当前用户 $(id -un)）——bootstrap-server.sh 的组授权没生效？runner 服务重启过吗"
-  warn "$MS_REPO 还不是 git 仓库，首次 clone（凭据来自工作流的临时令牌；手工跑看到 Username 提示就 Ctrl+C）"
-  run "git clone -q --branch '$MS_BRANCH' '$MS_GIT_URL' '$MS_REPO/.clone.tmp' && cp -a '$MS_REPO/.clone.tmp/.' '$MS_REPO/' && rm -rf '$MS_REPO/.clone.tmp'"
-  [ "$DRY_RUN" = 1 ] && { warn "dry-run：后面的步骤要等 clone 之后才有意义，到此为止"; exit 0; }
+  NEED_INIT=1; warn "$MS_REPO 还不是 git 仓库，首次就地初始化（凭据来自工作流的临时令牌；手工跑看到 Username 提示就 Ctrl+C）"
+elif ! git -C "$MS_REPO" rev-parse -q --verify HEAD >/dev/null 2>&1; then
+  NEED_INIT=1; warn "$MS_REPO/.git 不完整（上次首次部署中断？），就地重建"
+fi
+if [ -d "$MS_REPO/.clone.tmp" ]; then
+  run "rm -rf '$MS_REPO/.clone.tmp'"; ok "清掉旧版脚本留下的 .clone.tmp"
+fi
+if [ "$NEED_INIT" = 1 ]; then
+  run "rm -rf '$MS_REPO/.git' && git -C '$MS_REPO' init -q && git -C '$MS_REPO' remote add origin '$MS_GIT_URL' && git -C '$MS_REPO' fetch -q origin '$MS_BRANCH' && git -C '$MS_REPO' checkout -q -f -B '$MS_BRANCH' 'origin/$MS_BRANCH'"
+  [ "$DRY_RUN" = 1 ] && { warn "dry-run：后面的步骤要等代码就位之后才有意义，到此为止"; exit 0; }
+  ok "代码就位：$(git -C "$MS_REPO" log --oneline -1)"
 fi
 cd "$MS_REPO"
 [ "$(git rev-parse --abbrev-ref HEAD)" = "$MS_BRANCH" ] || warn "当前分支是 $(git rev-parse --abbrev-ref HEAD)，不是 $MS_BRANCH"

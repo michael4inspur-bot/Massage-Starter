@@ -48,12 +48,18 @@ code=$(echo "$h" | tail -1); body=$(echo "$h" | head -1 | head -c 200)
 
 echo; echo "[4] nginx 与公网"
 systemctl is-active --quiet nginx && ok "nginx active" || no "nginx $(systemctl is-active nginx)"
-grep -q "server_name $MS_PUBLIC_HOST" /etc/nginx/nginx.conf 2>/dev/null && ok "nginx.conf 有 $MS_PUBLIC_HOST 的 server 块" || no "nginx.conf 没有 $MS_PUBLIC_HOST（跑 tools/ops/nginx-site.py）"
-if [ -f "/etc/letsencrypt/live/$MS_PUBLIC_HOST/fullchain.pem" ]; then
-  exp=$(openssl x509 -enddate -noout -in "/etc/letsencrypt/live/$MS_PUBLIC_HOST/fullchain.pem" 2>/dev/null | cut -d= -f2)
-  ok "证书存在，到期：${exp:-?}"
+# nginx.conf 与 /etc/letsencrypt/live 通常只有 root 能读；非 root（工作流里的 ghrunner）读不到时
+# 不能报"没有"——改从网络侧看：本机 443 按 SNI 握手拿证书到期时间，公网探活看 nginx 是否把域名路由过来
+if [ -r /etc/nginx/nginx.conf ]; then
+  grep -q "server_name $MS_PUBLIC_HOST" /etc/nginx/nginx.conf && ok "nginx.conf 有 $MS_PUBLIC_HOST 的 server 块" || no "nginx.conf 没有 $MS_PUBLIC_HOST（root 跑 bootstrap-server.sh --site）"
 else
-  no "没有 /etc/letsencrypt/live/$MS_PUBLIC_HOST/（certbot certonly --nginx -d $MS_PUBLIC_HOST）"
+  info "nginx.conf 对 $(id -un) 不可读，以下面的握手与公网探活为准"
+fi
+cert=$(echo | openssl s_client -connect 127.0.0.1:443 -servername "$MS_PUBLIC_HOST" 2>/dev/null | openssl x509 -noout -subject -enddate 2>/dev/null || true)
+if echo "$cert" | grep -q "$MS_PUBLIC_HOST"; then
+  ok "443 证书：$(echo "$cert" | sed -n 's/^notAfter=/到期 /p')"
+else
+  no "本机 443 按 SNI $MS_PUBLIC_HOST 拿到的不是本域名证书（$(echo "$cert" | sed -n 's/^subject=//p' | head -1)）"
 fi
 if command -v getent >/dev/null; then
   ip=$(getent hosts "$MS_PUBLIC_HOST" | awk '{print $1}' | head -1)
