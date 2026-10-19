@@ -5,7 +5,7 @@
 #
 # 生成的 ms-install.sh 在联调机上以 root 执行：
 #   sudo bash ms-install.sh --token <runner 注册令牌>
-# 它把内嵌脚本解到 /tmp/ms-ops/，依次跑：
+# 它把内嵌脚本解到 /root/ms-install/（root 专用；工作流以 ghrunner 用的是 /tmp/ms-ops，两者分开以免权限互相挡），依次跑：
 #   bootstrap-server.sh --site   组 / 目录 / env / systemd 单元 / sudoers / nginx 站点 / Let's Encrypt 证书
 #   install-runner.sh --token …  为 Massage-Starter 注册 runner（标签 pilot），装成 systemd 服务
 # 之后部署走 GitHub Actions「Deploy to pilot」。
@@ -32,8 +32,8 @@ while [ \$# -gt 0 ]; do
   esac
 done
 [ "\$(id -u)" = 0 ] || { echo "要以 root 执行：sudo bash \$0 --token ..." >&2; exit 1; }
-OPS=/tmp/ms-ops
-rm -rf "\$OPS"; mkdir -p "\$OPS"
+OPS=/root/ms-install
+rm -rf "\$OPS"; mkdir -p "\$OPS"; chmod 700 "\$OPS"
 HDR
   for f in "${FILES[@]}"; do
     [ -f "$HERE/$f" ] || { echo "缺 $HERE/$f" >&2; exit 1; }
@@ -43,7 +43,6 @@ HDR
   done
   cat <<'TAIL'
 chmod +x "$OPS"/*.sh "$OPS"/*.py
-chmod -R a+rX "$OPS"
 echo "安装包已解到 $OPS"
 
 bash "$OPS/bootstrap-server.sh" --site
