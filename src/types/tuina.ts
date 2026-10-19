@@ -51,7 +51,7 @@ export type SafetyGateStatus = "unscreened" | "cleared" | "blocked";
 
 // ---------- 模块 A：触诊导航 ----------
 
-/** SVG 画布坐标（viewBox 0 0 400 600，正面/背面两张图） */
+/** 局部解剖图坐标（每个部位图 viewBox 0 0 400 300） */
 export interface SvgPoint {
   x: number;
   y: number;
@@ -59,13 +59,23 @@ export interface SvgPoint {
 
 export type BodyView = "anterior" | "posterior";
 
+/** 聚焦的解剖部位：每个部位一张放大的局部图 */
+export type AnatomyRegion =
+  | "forearm-posterior" // 前臂背侧（伸肌群）
+  | "neck-shoulder-posterior" // 颈肩背面
+  | "lumbar-posterior" // 腰骶背面
+  | "calf-posterior" // 小腿后侧
+  | "abdomen-anterior"; // 腹部正面
+
 export interface AnatomyLandmark {
   id: string;
   /** 骨性标志或肌肉/激痛点名称 */
   name: string;
   latin: string;
   kind: "bone" | "muscle" | "triggerPoint" | "fascia";
-  view: BodyView;
+  /** 所在局部图 */
+  region: AnatomyRegion;
+  /** 局部图内坐标 */
   position: SvgPoint;
   /** 手指怎么找到它：一步一步 */
   howToFind: string[];
@@ -78,6 +88,8 @@ export interface AnatomyLandmark {
 export interface PalpationModule {
   title: string;
   intro: string;
+  /** 本模块用到的局部图（按出现顺序） */
+  regions: AnatomyRegion[];
   landmarks: AnatomyLandmark[];
   /** 自检：找到全部标志后的确认题 */
   selfCheck: string;
@@ -127,8 +139,21 @@ export interface MechanicsParams {
   requiredSeconds: number;
 }
 
+/** 手法动画演示类型（TechniqueAnimation 组件按此绘制） */
+export type TechniqueDemo =
+  | "knead" // 掌揉：切向小圆周
+  | "press" // 静态垂直按压（Hold/Release）
+  | "pincer" // 拿法：捏提
+  | "strum" // 横向弹拨
+  | "shear" // 掌根剪切推
+  | "stretch" // 被动牵拉
+  | "drain" // 向心挤压引流
+  | "circle" // 摩腹顺时针
+  | "stroke"; // 慢速轻抚
+
 export interface Technique {
   id: string;
+  demo: TechniqueDemo;
   /** 中文名 + 现代命名，如 "慢速掌揉法（Ruffini 激活模式）" */
   name: string;
   modernName: string;

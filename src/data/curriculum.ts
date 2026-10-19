@@ -418,6 +418,7 @@ const STAGE_1: Stage = {
   relevantRedFlagIds: ["rf-acute-trauma", "rf-fracture", "rf-skin", "rf-first-time"],
   palpation: {
     title: "前臂伸肌群三层触诊导航",
+    regions: ["forearm-posterior"],
     intro:
       "前臂是最安全的练习场：没有大血管神经干，骨头、肌腱、肌腹三种触感一次集齐。把练习手的前臂放在桌上，掌心朝下，用另一只手的食指 + 中指指腹探索。",
     landmarks: [
@@ -426,8 +427,8 @@ const STAGE_1: Stage = {
         name: "肱骨外上髁",
         latin: "Epicondylus lateralis humeri",
         kind: "bone",
-        view: "posterior",
-        position: { x: 318, y: 262 },
+        region: "forearm-posterior",
+        position: { x: 112, y: 118 },
         howToFind: [
           "屈肘 90°，掌心朝下。",
           "从肘尖（尺骨鹰嘴）向外侧（拇指侧）滑 2–3 cm。",
@@ -441,8 +442,8 @@ const STAGE_1: Stage = {
         name: "尺骨鹰嘴",
         latin: "Olecranon ulnae",
         kind: "bone",
-        view: "posterior",
-        position: { x: 332, y: 258 },
+        region: "forearm-posterior",
+        position: { x: 88, y: 150 },
         howToFind: ["屈肘，肘尖最突出的那块骨头就是它。", "它是判断“骨头是什么触感”的基准点。"],
         feel: "尖锐、硬、皮下几乎没有软组织。",
         pitfalls: "肘尖与外上髁之间有一条浅沟，不要把沟误当作骨头。",
@@ -452,8 +453,8 @@ const STAGE_1: Stage = {
         name: "前臂伸肌群肌腹（桡侧腕短伸肌）",
         latin: "M. extensor carpi radialis brevis",
         kind: "muscle",
-        view: "posterior",
-        position: { x: 330, y: 300 },
+        region: "forearm-posterior",
+        position: { x: 176, y: 126 },
         howToFind: [
           "从肱骨外上髁向手腕方向滑 3–5 cm。",
           "让练习手反复“抬腕”（手背向上翘），指腹下会感到一团肉在鼓起、放松——那就是伸肌群肌腹。",
@@ -467,8 +468,8 @@ const STAGE_1: Stage = {
         name: "伸肌肌腱（腕背侧）",
         latin: "Tendines mm. extensorum",
         kind: "muscle",
-        view: "posterior",
-        position: { x: 344, y: 352 },
+        region: "forearm-posterior",
+        position: { x: 330, y: 138 },
         howToFind: [
           "滑到手腕背面上方 3 cm。",
           "抬起手指、翘手腕，皮下会浮起几根绷紧的“琴弦”。",
@@ -488,6 +489,7 @@ const STAGE_1: Stage = {
     techniques: [
       {
         id: "t1-pressure-calibration",
+        demo: "press",
         name: "指腹压强标定（VAS 阶梯按压）",
         modernName: "Graded Pressure Calibration",
         summary:
@@ -516,6 +518,7 @@ const STAGE_1: Stage = {
       },
       {
         id: "t1-palm-kneading",
+        demo: "knead",
         name: "慢速掌揉法（Ruffini 激活模式）",
         modernName: "Slow Tangential Kneading @ 2.0 Hz",
         summary:
@@ -613,6 +616,7 @@ const STAGE_2: Stage = {
   relevantRedFlagIds: ["rf-vertebral-artery", "rf-radiating-numbness", "rf-osteoporosis", "rf-anticoagulant"],
   palpation: {
     title: "颈肩骨性三角与斜方肌激痛点导航",
+    regions: ["neck-shoulder-posterior"],
     intro:
       "对象坐直、双手放在大腿上，头略前倾让 C7 突出。你站在身后。先找三个骨性标志搭建“三角”，激痛点就在三角的上边缘。",
     landmarks: [
@@ -621,8 +625,8 @@ const STAGE_2: Stage = {
         name: "C7 棘突（隆椎）",
         latin: "Processus spinosus C7",
         kind: "bone",
-        view: "posterior",
-        position: { x: 200, y: 118 },
+        region: "neck-shoulder-posterior",
+        position: { x: 200, y: 72 },
         howToFind: [
           "让对象低头，颈根部最突出的一块骨头。",
           "验证：手指按住它，让对象慢慢仰头——C6 会往前“缩”回去，C7 基本不动。",
@@ -635,8 +639,8 @@ const STAGE_2: Stage = {
         name: "肩胛冈",
         latin: "Spina scapulae",
         kind: "bone",
-        view: "posterior",
-        position: { x: 262, y: 168 },
+        region: "neck-shoulder-posterior",
+        position: { x: 292, y: 126 },
         howToFind: [
           "从肩峰（肩膀最外侧的骨头）向脊柱方向横着摸，一条斜向内下的骨嵴。",
           "它把肩胛骨分成上面的冈上窝和下面的冈下窝。",
@@ -649,8 +653,8 @@ const STAGE_2: Stage = {
         name: "肩峰",
         latin: "Acromion",
         kind: "bone",
-        view: "posterior",
-        position: { x: 296, y: 152 },
+        region: "neck-shoulder-posterior",
+        position: { x: 340, y: 112 },
         howToFind: ["把手掌盖在肩膀最顶端，掌下最外侧的平台状骨头。", "它是上斜方肌的外侧止点。"],
         feel: "扁平、宽、位置最浅。",
         pitfalls: "不要和锁骨外端混淆（锁骨在前方、更圆）。",
@@ -660,8 +664,8 @@ const STAGE_2: Stage = {
         name: "上斜方肌 TrP1（游离缘中点）",
         latin: "M. trapezius pars descendens, TrP1",
         kind: "triggerPoint",
-        view: "posterior",
-        position: { x: 244, y: 134 },
+        region: "neck-shoulder-posterior",
+        position: { x: 256, y: 86 },
         howToFind: [
           "连接 C7 与肩峰的连线，上斜方肌游离缘就在这条线上方的肉嵴。",
           "拇指在前、四指在后，用“拿”的方式把肌肉捏起来，在连线中点附近来回捻。",
@@ -675,8 +679,8 @@ const STAGE_2: Stage = {
         name: "上斜方肌 TrP2（偏后偏外）",
         latin: "M. trapezius pars descendens, TrP2",
         kind: "triggerPoint",
-        view: "posterior",
-        position: { x: 256, y: 142 },
+        region: "neck-shoulder-posterior",
+        position: { x: 276, y: 96 },
         howToFind: ["从 TrP1 向后、向外各滑 1–2 cm，仍在同一条紧张带上。", "牵涉痛更偏向乳突后方与颈后。"],
         feel: "与 TrP1 相似，通常稍小。",
         pitfalls: "两个点有时融合成一条，不必强求分开。",
@@ -686,8 +690,8 @@ const STAGE_2: Stage = {
         name: "肩胛提肌止点（肩胛骨上角）",
         latin: "M. levator scapulae, angulus superior",
         kind: "triggerPoint",
-        view: "posterior",
-        position: { x: 236, y: 150 },
+        region: "neck-shoulder-posterior",
+        position: { x: 240, y: 108 },
         howToFind: [
           "沿肩胛骨内侧缘向上摸到最顶端的角——肩胛骨上角。",
           "肩胛提肌像一根缆绳从这里斜向上连到 C1–C4。",
@@ -707,6 +711,7 @@ const STAGE_2: Stage = {
     techniques: [
       {
         id: "t2-ischemic-compression",
+        demo: "press",
         name: "激痛点缺血性按压",
         modernName: "Ischemic Compression 45 s / 15 s",
         summary:
@@ -740,6 +745,7 @@ const STAGE_2: Stage = {
       },
       {
         id: "t2-pincer-pumping",
+        demo: "pincer",
         name: "拿法泵血（节律性捏提）",
         modernName: "Pincer-Grip Rhythmic Pumping @ 1.0 Hz",
         summary:
@@ -765,6 +771,7 @@ const STAGE_2: Stage = {
       },
       {
         id: "t2-levator-strum",
+        demo: "strum",
         name: "肩胛提肌条索横向弹拨",
         modernName: "Transverse Friction / Strumming @ 1.0 Hz",
         summary: "在肩胛骨上角上方找到肩胛提肌条索，拇指垂直于肌纤维方向横向拨动，1 Hz。",
@@ -860,6 +867,7 @@ const STAGE_3: Stage = {
   relevantRedFlagIds: ["rf-cauda-equina", "rf-radiating-numbness", "rf-systemic", "rf-osteoporosis"],
   palpation: {
     title: "腰部坐标系与胸腰筋膜导航",
+    regions: ["lumbar-posterior"],
     intro:
       "对象俯卧，腹下垫薄枕让腰部放平。你站在对象一侧，操作对侧腰部（手法要从你这边推向对侧，便于用体重）。先搭坐标，再找筋膜与肌肉。",
     landmarks: [
@@ -868,8 +876,8 @@ const STAGE_3: Stage = {
         name: "髂嵴",
         latin: "Crista iliaca",
         kind: "bone",
-        view: "posterior",
-        position: { x: 246, y: 312 },
+        region: "lumbar-posterior",
+        position: { x: 272, y: 214 },
         howToFind: [
           "双手叉腰，拇指向后——掌下最高的骨缘就是髂嵴。",
           "两侧髂嵴最高点的连线通过 L4 棘突（Tuffier 线）。",
@@ -882,8 +890,8 @@ const STAGE_3: Stage = {
         name: "髂后上棘（PSIS）",
         latin: "Spina iliaca posterior superior",
         kind: "bone",
-        view: "posterior",
-        position: { x: 226, y: 336 },
+        region: "lumbar-posterior",
+        position: { x: 230, y: 246 },
         howToFind: [
           "沿髂嵴向后内侧滑到尽头，一个圆钝的骨性凸起，表面常有小酒窝（Venus dimple）。",
           "两侧 PSIS 连线约过 S2。",
@@ -896,8 +904,8 @@ const STAGE_3: Stage = {
         name: "L4 棘突",
         latin: "Processus spinosus L4",
         kind: "bone",
-        view: "posterior",
-        position: { x: 200, y: 308 },
+        region: "lumbar-posterior",
+        position: { x: 200, y: 208 },
         howToFind: ["从两侧髂嵴最高点画一条横线，正中线上被横线穿过的骨突。", "向上数到 L1，向下到 L5、骶骨。"],
         feel: "正中线上一排硬结节，每个之间有指尖宽的凹陷。",
         pitfalls: "棘突本身是绝对不推不压的区域，它只是坐标。",
@@ -907,8 +915,8 @@ const STAGE_3: Stage = {
         name: "竖脊肌（腰段）",
         latin: "M. erector spinae, pars lumbalis",
         kind: "muscle",
-        view: "posterior",
-        position: { x: 220, y: 285 },
+        region: "lumbar-posterior",
+        position: { x: 236, y: 132 },
         howToFind: [
           "棘突旁开 2–3 指宽，一条纵向的肉柱。",
           "让对象把头和肩膀抬离床面 2 cm，肉柱会明显鼓起——那就是竖脊肌。",
@@ -922,8 +930,8 @@ const STAGE_3: Stage = {
         name: "胸腰筋膜（菱形区）",
         latin: "Fascia thoracolumbalis",
         kind: "fascia",
-        view: "posterior",
-        position: { x: 200, y: 290 },
+        region: "lumbar-posterior",
+        position: { x: 200, y: 160 },
         howToFind: [
           "以 L1 为顶、两侧 PSIS 为底角的菱形区，筋膜在此最厚、最浅。",
           "用整个手掌压住皮肤，向头侧“推”——健康的筋膜应该能带着皮肤滑动 1–2 cm；久坐者往往只能滑几毫米且发涩。",
@@ -941,6 +949,7 @@ const STAGE_3: Stage = {
     techniques: [
       {
         id: "t3-shear-glide",
+        demo: "shear",
         name: "掌根慢速剪切推法（触变升温模式）",
         modernName: "Slow Shear Glide @ 0.5 Hz (Thixotropy)",
         summary:
@@ -967,6 +976,7 @@ const STAGE_3: Stage = {
       },
       {
         id: "t3-erector-strum",
+        demo: "strum",
         name: "竖脊肌条索横向弹拨",
         modernName: "Transverse Strumming of Erector Spinae @ 1.0 Hz",
         summary: "拇指或叠指在痉挛条索上横向（内外方向）拨动，垂直于纵向走行的肌纤维，1 Hz。",
@@ -991,6 +1001,7 @@ const STAGE_3: Stage = {
       },
       {
         id: "t3-gto-stretch",
+        demo: "stretch",
         name: "竖脊肌被动牵拉（GTO 自身抑制）",
         modernName: "Sustained Passive Stretch 30 s / 10 s",
         summary:
@@ -1090,6 +1101,7 @@ const STAGE_4: Stage = {
   relevantRedFlagIds: ["rf-dvt", "rf-abdominal", "rf-anticoagulant", "rf-skin"],
   palpation: {
     title: "小腿三头肌与腹部摩腹路径导航",
+    regions: ["calf-posterior", "abdomen-anterior"],
     intro:
       "小腿部分对象俯卧、脚踝垫枕；腹部部分对象仰卧、屈膝放松腹肌。先确认没有 DVT 体征（单侧肿胀、发热、深压痛）。",
     landmarks: [
@@ -1098,8 +1110,8 @@ const STAGE_4: Stage = {
         name: "腓肠肌内外侧头",
         latin: "M. gastrocnemius, caput mediale / laterale",
         kind: "muscle",
-        view: "posterior",
-        position: { x: 226, y: 468 },
+        region: "calf-posterior",
+        position: { x: 200, y: 112 },
         howToFind: [
           "让对象踮脚（俯卧时绷脚尖），小腿后方鼓起的两块“心形”肌肉。",
           "两块之间的纵沟就是内外侧头的分界。",
@@ -1112,8 +1124,8 @@ const STAGE_4: Stage = {
         name: "比目鱼肌",
         latin: "M. soleus",
         kind: "muscle",
-        view: "posterior",
-        position: { x: 222, y: 505 },
+        region: "calf-posterior",
+        position: { x: 200, y: 186 },
         howToFind: ["在腓肠肌下方、跟腱上方，从两侧探入腓肠肌深层。", "屈膝 90° 再踮脚时，腓肠肌松弛而比目鱼肌仍收缩，可借此区分。"],
         feel: "扁平宽阔，比腓肠肌更深更韧。",
         pitfalls: "比目鱼肌的 DOMS 往往比腓肠肌更明显但更深，用掌根而非拇指。",
@@ -1123,8 +1135,8 @@ const STAGE_4: Stage = {
         name: "跟腱",
         latin: "Tendo calcaneus",
         kind: "muscle",
-        view: "posterior",
-        position: { x: 220, y: 548 },
+        region: "calf-posterior",
+        position: { x: 200, y: 254 },
         howToFind: ["脚跟上方那根粗绳。", "引流手法从这里开始向上。"],
         feel: "粗、韧、像一根缆绳；不应有局部增粗结节。",
         pitfalls: "跟腱本身不揉压，只作为引流起点。",
@@ -1134,8 +1146,8 @@ const STAGE_4: Stage = {
         name: "腘窝（禁压区）",
         latin: "Fossa poplitea",
         kind: "bone",
-        view: "posterior",
-        position: { x: 222, y: 428 },
+        region: "calf-posterior",
+        position: { x: 200, y: 44 },
         howToFind: ["膝关节后方的菱形凹陷。", "引流到此处下方 3 指时手必须抬起。"],
         feel: "柔软凹陷，可触到腘动脉搏动。",
         pitfalls: "压迫腘窝可能损伤血管神经，也是 DVT 好发位置。",
@@ -1145,8 +1157,8 @@ const STAGE_4: Stage = {
         name: "脐（摩腹中心）",
         latin: "Umbilicus",
         kind: "bone",
-        view: "anterior",
-        position: { x: 200, y: 300 },
+        region: "abdomen-anterior",
+        position: { x: 200, y: 150 },
         howToFind: ["仰卧，肚脐即圆心。", "摩腹路径是以脐为中心、半径约一掌的圆。"],
         feel: "不适用。",
         pitfalls: "有脐疝者禁做。",
@@ -1156,8 +1168,8 @@ const STAGE_4: Stage = {
         name: "结肠走行（升→横→降）",
         latin: "Colon ascendens → transversum → descendens",
         kind: "fascia",
-        view: "anterior",
-        position: { x: 232, y: 320 },
+        region: "abdomen-anterior",
+        position: { x: 128, y: 120 },
         howToFind: [
           "从对象右下腹（你看过去是左下方）开始：升结肠在右侧向上。",
           "到肋弓下转为横结肠向左。",
@@ -1171,8 +1183,8 @@ const STAGE_4: Stage = {
         name: "髂前上棘（ASIS）",
         latin: "Spina iliaca anterior superior",
         kind: "bone",
-        view: "anterior",
-        position: { x: 236, y: 338 },
+        region: "abdomen-anterior",
+        position: { x: 118, y: 222 },
         howToFind: ["腹部两侧最前方的骨突，裤腰带最容易卡住的地方。", "两侧 ASIS 之间是摩腹范围的下界。"],
         feel: "硬、尖、表浅。",
         pitfalls: "ASIS 内侧有股外侧皮神经，不要压。",
@@ -1187,6 +1199,7 @@ const STAGE_4: Stage = {
     techniques: [
       {
         id: "t4-calf-drainage",
+        demo: "drain",
         name: "小腿三头肌向心性挤压引流",
         modernName: "Centripetal Compression Drainage @ 1.0 Hz",
         summary: "双手环握小腿，从跟腱上方开始每拍挤压一次并向膝方向移动 2 cm，到腘窝下 3 指抬手回到起点。",
@@ -1212,6 +1225,7 @@ const STAGE_4: Stage = {
       },
       {
         id: "t4-abdominal-clockwise",
+        demo: "circle",
         name: "腹部顺时针摩腹（躯体—内脏反射）",
         modernName: "Clockwise Abdominal Effleurage @ 0.5 Hz",
         summary: "手掌平放在脐周，沿升→横→降结肠方向画圆，一圈 2 秒（0.5 Hz），压力只到“腹壁轻轻下陷”。",
@@ -1239,6 +1253,7 @@ const STAGE_4: Stage = {
       },
       {
         id: "t4-vagal-slow-stroke",
+        demo: "stroke",
         name: "背部慢速中压轻抚（助眠收尾）",
         modernName: "Slow Moderate-Pressure Stroking @ 0.25 Hz",
         summary: "对象俯卧，双手从颈根沿竖脊肌向下滑到骶骨，一趟 4 秒（0.25 Hz），中等压力，收尾时逐渐减轻。",

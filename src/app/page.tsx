@@ -29,6 +29,7 @@ import StageMap from "@/components/StageMap";
 import PalpationNavigator from "@/components/PalpationNavigator";
 import LiteratureDrawer from "@/components/LiteratureDrawer";
 import CheckpointQuiz from "@/components/CheckpointQuiz";
+import TechniqueAnimation from "@/components/TechniqueAnimation";
 
 const TABS: { id: ActiveTab; label: string; tag: string; icon: typeof Hand }[] = [
   { id: "palpation", label: "触诊导航", tag: "模块 A", icon: Crosshair },
@@ -304,9 +305,14 @@ export default function HomePage() {
                     })}
                   </div>
 
-                  <div className="card p-4">
-                    <p className="text-sm text-white/80">{stage.practice.intro}</p>
-                    <p className="mt-2 text-sm text-white/90">{technique.summary}</p>
+                  <div className="grid gap-4 lg:grid-cols-[minmax(0,420px)_1fr]">
+                    <TechniqueAnimation technique={technique} />
+                    <div className="card p-4">
+                      <p className="text-xs uppercase tracking-widest text-white/40">本阶段练功要点</p>
+                      <p className="mt-1 text-sm text-white/80">{stage.practice.intro}</p>
+                      <p className="mt-3 text-xs uppercase tracking-widest text-white/40">这个动作</p>
+                      <p className="mt-1 text-sm text-white/90">{technique.summary}</p>
+                    </div>
                   </div>
 
                   {!gateCleared && (
