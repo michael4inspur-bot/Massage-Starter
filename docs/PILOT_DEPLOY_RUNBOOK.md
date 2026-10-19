@@ -27,7 +27,9 @@
 
 | 脚本 | 谁跑 | 做什么 |
 |---|---|---|
-| `bootstrap-server.sh` | root，一次 | 组 / 目录 / `.env.production` / systemd 单元 / sudoers |
+| `bundle-installer.sh` | 开发机 | 把下面几个打成自包含的 `ms-install.sh`（首次安装用） |
+| `bootstrap-server.sh` | root，一次 | 组 / 目录 / `.env.production` / systemd 单元 / sudoers；`--site` 再做 nginx + 证书 |
+| `install-runner.sh` | root，一次 | 为本仓库注册 runner（`ms-pilot`，标签 `pilot`）并装成 systemd 服务 |
 | `deploy.sh` | ghrunner（工作流）或 root | 拉代码 → `npm ci` → `prisma db push` → 换入产物 → 重启 → 探活 → 失败回滚；`--rollback` |
 | `build-prebuilt.sh` | 托管 runner（工作流）或本机 | `next build` 并组装 standalone 产物 + `BUILD_INFO` |
 | `nginx-site.py` | root | 写 / 更新 ms.port.et 受管块（候选校验、备份、`--rollback`），证书存在时自动带 443 |
@@ -35,46 +37,41 @@
 
 ## 2. 首次上线（按顺序，一次性）
 
+服务器拉不了私有仓库、runner 又还没装，所以首次安装用一个**自包含安装包** `ms-install.sh`：
+由 `tools/ops/bundle-installer.sh` 把 `bootstrap-server.sh` / `install-runner.sh` / `nginx-site.py` / 单元模板等打进一个文件，
+在联调机上以 root 跑一次即可。可重复执行，已完成的步骤会跳过；**不碰 evcharger 的服务与 runner**。
+
 ### 2.1 DNS
-在 `port.et` 的 DNS 加 A 记录：`ms.port.et → 47.91.93.223`（与 `ev.port.et` 同一台）。验证：`dig +short ms.port.et` 返回该 IP。
+`port.et` 加 A 记录 `ms.port.et → 47.91.93.223`（与 `ev.port.et` 同一台）。验证：`getent hosts ms.port.et`。
 
-### 2.2 注册本仓库的 runner（联调机，以 ghrunner 用户）
-runner 是**仓库级**的（个人账户没有组织级 runner），evcharger 那台 `ghrunner` 不能复用，要再装一个实例、标签 `pilot`：
+### 2.2 生成安装包（开发机 / Claude 会话里）
+```bash
+bash tools/ops/bundle-installer.sh ./ms-install.sh
+```
 
-1. GitHub → `Massage-Starter` → Settings → Actions → Runners → New self-hosted runner → Linux x64，复制页面上的下载与 `config.sh` 命令（含一次性 token）。
-2. 联调机上以 **ghrunner** 执行（目录另起，不要和 `/opt/actions-runner` 混）：
+### 2.3 在联调机上跑（root，一次）
+1. 拿 runner 注册令牌：GitHub → Massage-Starter → Settings → Actions → Runners → **New self-hosted runner**，
+   页面上 `./config.sh --url … --token XXXX` 那一行的 `XXXX`（1 小时内有效）。
+2. 把 `ms-install.sh` 传到联调机（`scp ms-install.sh root@47.91.93.223:/root/`），然后：
    ```bash
-   sudo mkdir -p /opt/actions-runner-ms && sudo chown ghrunner:ghrunner /opt/actions-runner-ms
-   sudo -iu ghrunner bash -c 'cd /opt/actions-runner-ms && curl -o actions-runner.tar.gz -L <页面上的下载地址> && tar xzf actions-runner.tar.gz'
-   sudo -iu ghrunner bash -c 'cd /opt/actions-runner-ms && ./config.sh --url https://github.com/michael4inspur-bot/Massage-Starter --token <页面上的 token> --name ms-pilot --labels pilot --unattended'
-   cd /opt/actions-runner-ms && sudo ./svc.sh install ghrunner && sudo ./svc.sh start && sudo ./svc.sh status
+   sudo bash /root/ms-install.sh --token XXXX
    ```
-   验收判据：`systemctl list-units 'actions.runner.*'` 里多了一条、GitHub 页面 Runners 显示 `ms-pilot` Idle。手工 `./run.sh` 起的 runner 终端一断就死（evcharger RUNBOOK §5.1）。
 
-### 2.3 引导（root，一次）
-1. GitHub → Actions → **Deploy to pilot** → Run workflow（分支 main，`dry_run=true`）。Preflight 会把 `tools/ops/` 复制到联调机 `/tmp/ms-ops/`，然后因为 `/mnt/data/massage-starter` 不存在而报错停下——这是预期的。
-2. 联调机 root：
-   ```bash
-   sudo bash /tmp/ms-ops/bootstrap-server.sh
-   sudo systemctl restart 'actions.runner.*'      # 让 ghrunner 的新附加组 msdeploy 生效
-   ```
-   脚本幂等，打印 node 路径、OpenSSL 版本、端口 9600 是否空闲。
+它依次做：
+
+| 步 | 脚本 | 内容 |
+|---|---|---|
+| 1 | `bootstrap-server.sh --site` | 组 `msdeploy`、`/mnt/data/massage-starter/{releases,data}`、`.env.production`、systemd 单元 `evidence-tuina`、sudoers（只许 ghrunner 重启这一个服务） |
+| 2 | 同上 | `nginx-site.py` 写 80 块 → reload → `certbot certonly --nginx -d ms.port.et --non-interactive`（沿用机器上已有的 Let's Encrypt 账号）→ 写 443 + 80 跳转 → reload。证书失败只告警，站点先以 http 提供 |
+| 3 | `install-runner.sh --token` | runner 程序：从 GitHub 下最新版并按 release 里的 SHA256 校验；下载失败则从 `/opt/actions-runner` 拷程序文件（不拷凭据）。以 ghrunner 注册到 `/opt/actions-runner-ms`，名字 `ms-pilot`、标签 `pilot`，`svc.sh install` 成 systemd 服务 |
+
+验收：GitHub → Settings → Actions → Runners 里 `ms-pilot` 显示 Idle；`systemctl list-units 'actions.runner.*'` 多出一条。
 
 ### 2.4 首次部署（Actions）
-Actions → Deploy to pilot → `dry_run=false`、`build_on=hosted`。build 任务在 GitHub 托管 runner 上构建，deploy 任务在 `ms-pilot` 上：clone → `npm ci` → `prisma db push` → 换入产物 → `systemctl restart evidence-tuina` → `/api/health` 200。
-此时只有本机 127.0.0.1:9600 能访问，nginx 还没配。
+Actions → **Deploy to pilot** → `dry_run=false`、`build_on=hosted`。build 在 GitHub 托管 runner 上构建，deploy 在 `ms-pilot` 上：
+clone → `npm ci` → `prisma db push` → 换入产物 → `systemctl restart evidence-tuina` → `/api/health` 200 → 部署后巡检（含公网 https 探活）。
 
-### 2.5 nginx + 证书（root）
-```bash
-python3 /mnt/data/massage-starter/tools/ops/nginx-site.py --dry-run     # 看 diff；候选已过 nginx -t
-python3 /mnt/data/massage-starter/tools/ops/nginx-site.py && systemctl reload nginx     # 此时只写 80 块（还没证书）
-certbot certonly --nginx -d ms.port.et                                                  # 单条执行；沿用机器上已有的 Let's Encrypt 账号
-python3 /mnt/data/massage-starter/tools/ops/nginx-site.py && systemctl reload nginx     # 证书已存在 → 受管块升级为 443 + 80 跳转
-```
-受管块会把 http 块里的 `add_header` 原样搬进 server 层、只替换 CSP（Next.js 的内联 hydration 脚本需要 `'unsafe-inline'`）。
-续期不用管：`certbot renew` 沿用 nginx 插件，80 块里保持 `server_name ms.port.et` 即可。
-
-### 2.6 验收
+### 2.5 验收
 ```bash
 bash /mnt/data/massage-starter/tools/ops/ms-status.sh
 curl -s https://ms.port.et/api/health      # {"ok":true,"commit":"<main 的 sha>","db":"ok",...}
@@ -100,9 +97,10 @@ python3 /mnt/data/massage-starter/tools/ops/nginx-site.py --rollback && nginx -t
 | 现象 | 原因 / 处置 |
 |---|---|
 | 工作流 deploy 一直 Queued | 本仓库的 runner 不在线：`systemctl status 'actions.runner.*'`；或 `runs-on` 标签 `pilot` 没对上 |
-| Preflight `不可写` | bootstrap 后没重启 runner 服务，附加组没生效 |
+| Preflight `不可写` | runner 服务比 bootstrap 先起，附加组没生效：`systemctl restart "$(cat /opt/actions-runner-ms/.service)"`（只重启本仓库这台，别动 evcharger 的） |
 | `预构建产物的提交 ≠ 联调机 HEAD` | 构建与部署之间又合并了 main，重新触发一次 |
 | `npm ci` 卡在下载 Prisma 引擎 | 联调机间歇性出网故障（evcharger RUNBOOK §1 已知风险），稍后重试；产物本身自带 RHEL 引擎，不依赖这一步的下载 |
 | `/api/health` 503 `db: error` | `.env.production` 的 `DATABASE_URL` 路径对 ghrunner 不可写，或 `data/` 目录权限；`ls -la /mnt/data/massage-starter/data` |
 | 页面空白、控制台 CSP 报错 | 受管块的 CSP 被 http 块新加的头覆盖？重跑 `nginx-site.py`，它会重新搬 http 块的头 |
-| `certbot certonly --nginx` 找不到 server 块 | 先跑一次 `nginx-site.py`（80 块必须先存在） |
+| 证书没签下来 | DNS 未生效或 80 端口不通；修好后重跑 `sudo bash /tmp/ms-ops/bootstrap-server.sh --site` |
+| runner 注册报 token 无效 | 令牌 1 小时过期且只能用一次，回 Runners 页面重新生成 |
