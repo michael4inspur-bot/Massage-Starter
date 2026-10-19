@@ -10,8 +10,8 @@ name: Deploy to pilot
 #      （deploy.sh --prebuilt 会核对产物提交 = 联调机 HEAD）。这个私有仓库的免费分钟数没被别的流水线占用。
 #      build_on=server 是应急（联调机本机构建，会很慢）。
 #
-# 联调机侧一次性准备见 docs/PILOT_DEPLOY_RUNBOOK.md：注册本仓库的 runner（标签 pilot）、root 跑 bootstrap-server.sh、
-# nginx-site.py + certbot。工作流 Preflight 每次都把 tools/ops/ 复制到 /tmp/ms-ops/，root 从那里跑引导脚本。
+# 联调机侧一次性准备见 docs/PILOT_DEPLOY_RUNBOOK.md §2：root 跑一次 ms-install.sh（tools/ops/bundle-installer.sh 生成，
+# 内含 bootstrap-server.sh --site 与 install-runner.sh）。Preflight 每次也会把 tools/ops/ 复制到 /tmp/ms-ops/ 备用。
 
 on:
   workflow_dispatch:
@@ -93,7 +93,7 @@ jobs:
             exit 1
           fi
           if [ ! -w "$MS_REPO" ]; then
-            echo "::error::$MS_REPO 对 $(id -un) 不可写——bootstrap 的组授权没生效？runner 服务要重启一次：systemctl restart 'actions.runner.*'"
+            echo "::error::$MS_REPO 对 $(id -un) 不可写——bootstrap 的组授权没生效？只重启本仓库的 runner（别动 evcharger 那台）：systemctl restart \"$(cat /opt/actions-runner-ms/.service)\""
             ls -ld "$MS_REPO"; exit 1
           fi
           if [ -d "$MS_REPO/.git" ]; then
@@ -145,6 +145,12 @@ jobs:
           rc=${PIPESTATUS[0]}
           set -e
           exit "$rc"
+
+      # 成功也巡检一遍：本机探活、端口只绑 127.0.0.1、证书到期、公网 https://ms.port.et/api/health。
+      # 只报告不改状态，异常不让 job 失败（部署本身已经探活通过）。
+      - name: 部署后巡检
+        if: success() && !inputs.dry_run
+        run: bash tools/ops/ms-status.sh || true
 
       - name: 失败后巡检
         if: failure()

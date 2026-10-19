@@ -2,6 +2,7 @@
 # EvidenceTuina 联调机一次性引导（以 root 执行一次，可重复执行、幂等）。
 #
 #   sudo bash /tmp/ms-ops/bootstrap-server.sh          # 工作流 Preflight 会把 tools/ops/ 复制到 /tmp/ms-ops/
+#   sudo bash bootstrap-server.sh --site               # 另外写 nginx 站点 + 申请 Let's Encrypt 证书（ms-install.sh 用这个）
 #
 # 做什么（对照 evcharger RUNBOOK §2.0「服务器侧一次性授权」）：
 #   1. 建组 msdeploy，把 runner 用户 ghrunner 放进去
@@ -9,10 +10,21 @@
 #   3. 写 /mnt/data/massage-starter/.env.production（已存在则不动）
 #   4. 装 systemd 单元 evidence-tuina（node 路径按本机探测，可用 NODE_BIN 覆盖）
 #   5. sudoers：只允许 ghrunner 重启 evidence-tuina 这一个服务
-# 不做什么：不拉代码（代码由 Actions 用临时令牌拉）、不改 nginx（tools/ops/nginx-site.py）、不申请证书。
+#   6. （--site）nginx-site.py 写 80 块 → reload → certbot certonly --nginx → 再写 443 块 → reload；
+#      证书申请失败只告警，站点先以 http 可用
+# 不做什么：不拉代码（代码由 Actions 用临时令牌拉）。
 set -euo pipefail
 
+DO_SITE=0
+for a in "$@"; do
+  case "$a" in
+    --site) DO_SITE=1 ;;
+    -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
+    *) echo "未知选项: $a" >&2; exit 2 ;;
+  esac
+done
 MS_ROOT="${MS_ROOT:-/mnt/data/massage-starter}"
+MS_PUBLIC_HOST="${MS_PUBLIC_HOST:-ms.port.et}"
 MS_USER="${MS_USER:-ghrunner}"
 MS_GROUP="${MS_GROUP:-msdeploy}"
 MS_PORT="${MS_PORT:-9600}"
@@ -90,14 +102,49 @@ else
   rm -f "$SUDOERS.candidate"; die "sudoers 候选文件校验失败，未写入"
 fi
 
-step "完成。接下来"
-cat <<EOT
-  1) 让 runner 的新附加组生效：  systemctl restart 'actions.runner.*'
-  2) GitHub → Massage-Starter → Actions → Deploy to pilot → dry_run=false 跑一次（拉代码、npm ci、db push、换入产物、启动、探活）
-  3) nginx + 证书（root）：
-       python3 $MS_ROOT/tools/ops/nginx-site.py --dry-run      # 看 diff
-       python3 $MS_ROOT/tools/ops/nginx-site.py && systemctl reload nginx     # 先只有 80 块
-       certbot certonly --nginx -d ms.port.et                                 # 申请证书（单条执行，会有交互）
-       python3 $MS_ROOT/tools/ops/nginx-site.py && systemctl reload nginx     # 证书已存在 → 自动加 443 块 + 80 跳转
+if [ "$DO_SITE" = 1 ]; then
+  step "5. nginx 站点 + 证书（$MS_PUBLIC_HOST）"
+  command -v nginx >/dev/null || die "没有 nginx"
+  command -v python3 >/dev/null || die "没有 python3（nginx-site.py 要用）"
+  # set -euo pipefail 下解析失败（getent 退出 2）会让整个脚本无声退出，所以要 || true
+  ip=$(getent hosts "$MS_PUBLIC_HOST" 2>/dev/null | awk '{print $1}' | head -1 || true)
+  [ -n "$ip" ] && ok "DNS $MS_PUBLIC_HOST → $ip" || warn "本机解析不到 $MS_PUBLIC_HOST，证书多半会申请失败"
+  site() { MS_PUBLIC_HOST="$MS_PUBLIC_HOST" python3 "$HERE/nginx-site.py" "$@"; }
+  site >/tmp/ms-nginx-site.log 2>&1 || { cat /tmp/ms-nginx-site.log; die "nginx-site.py 失败（真实配置未改）"; }
+  grep -E '^== |无改动|已写入' /tmp/ms-nginx-site.log | sed 's/^/     /'
+  nginx -t >/dev/null 2>&1 && systemctl reload nginx && ok "nginx 已 reload（80 块就位）"
+  if [ -f "/etc/letsencrypt/live/$MS_PUBLIC_HOST/fullchain.pem" ]; then
+    ok "证书已存在，跳过申请"
+  elif command -v certbot >/dev/null; then
+    cb_args=(certonly --nginx -d "$MS_PUBLIC_HOST" --non-interactive --agree-tos --keep-until-expiring)
+    # 机器上已有 Let's Encrypt 账号（ev.port.et 在用）就沿用；没有才以无邮箱方式注册
+    ls /etc/letsencrypt/accounts/*/directory/* >/dev/null 2>&1 || cb_args+=(--register-unsafely-without-email)
+    if certbot "${cb_args[@]}" >/tmp/ms-certbot.log 2>&1; then
+      ok "证书已签发：/etc/letsencrypt/live/$MS_PUBLIC_HOST/"
+    else
+      tail -n 15 /tmp/ms-certbot.log | sed 's/^/     /'
+      warn "证书申请失败（DNS 未生效 / 80 端口不通？），站点先以 http 提供；修好后重跑本脚本 --site"
+    fi
+  else
+    warn "没有 certbot，跳过证书"
+  fi
+  if [ -f "/etc/letsencrypt/live/$MS_PUBLIC_HOST/fullchain.pem" ]; then
+    site >/tmp/ms-nginx-site.log 2>&1 || { cat /tmp/ms-nginx-site.log; die "写 443 块失败（真实配置未改）"; }
+    grep -E '^== |无改动|已写入' /tmp/ms-nginx-site.log | sed 's/^/     /'
+    nginx -t >/dev/null 2>&1 && systemctl reload nginx && ok "nginx 已 reload（443 + 80 跳转）"
+  fi
+fi
+
+step "完成"
+if [ "$DO_SITE" = 1 ]; then
+  echo "  目录 / 环境文件 / systemd 单元 / sudoers / nginx 站点已就位。"
+  echo "  还没注册 runner 的话：bash $HERE/install-runner.sh --token <注册令牌>（ms-install.sh 会接着自动跑）"
+else
+  cat <<EOT
+  1) 让 runner 的新附加组生效：只重启本仓库的 runner（不要动 evcharger 那台，它可能正在部署）
+       systemctl restart "\$(cat /opt/actions-runner-ms/.service)"
+  2) nginx + 证书：sudo bash $HERE/bootstrap-server.sh --site
+  3) GitHub → Massage-Starter → Actions → Deploy to pilot → dry_run=false
   4) 验收：bash $MS_ROOT/tools/ops/ms-status.sh
 EOT
+fi
