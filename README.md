@@ -71,4 +71,9 @@ docker compose up --build         # 容器端口 9600，数据卷 tuina-data
 | 3 | 慢性下背痛核心解法（45 min） | 掌根剪切推 0.5 Hz · 弹拨 1.0 Hz · GTO 牵拉 30s/10s | Stecco 2011 *Surg Radiol Anat*；ACP 2017 *Ann Intern Med*；Langevin 2005 |
 | 4 | 运动后恢复与助眠（30 min） | 向心引流 1.0 Hz · 摩腹 0.5 Hz · 慢速轻抚 0.25 Hz | Crane 2012 *Sci Transl Med*；Diego & Field 2009；Guo 2017；Sinclair 2011 |
 
+## 部署（联调机 ms.port.et）
+
+构建在 GitHub 托管 runner 上做，联调机只换入产物；一次性引导、nginx + 证书、回滚见 `docs/PILOT_DEPLOY_RUNBOOK.md`。
+脚本在 `tools/ops/`（`deploy.sh` / `nginx-site.py` / `bootstrap-server.sh` / `ms-status.sh`），工作流 `.github/workflows/deploy-pilot.yml`。
+
 > 本应用为教学辅助，不替代医疗诊断。全程禁止颈椎 / 腰椎旋转扳法。

@@ -1,0 +1,159 @@
+name: Deploy to pilot
+
+# EvidenceTuina 联调机部署（ms.port.et），手动触发。
+# 对照 evcharger 的 .github/workflows/deploy-pilot.yml，三条约定同样适用：
+#   ① 部署不能被取消（cancel-in-progress: false）：在 systemctl restart 与探活之间被杀会留下停机服务。
+#   ② 脚本从 runner 的 checkout 里跑，不从 /mnt/data/massage-starter 里跑（deploy.sh 会 git pull 它自己所在的仓库）。
+#   ③ 只允许从 main 触发。
+#   ④ 构建不在联调机上做：next build 进程树峰值约 800 MB，联调机可用内存只剩几百 MB。缺省 build_on=hosted ——
+#      在 GitHub 托管 runner（ubuntu-latest，x86_64 与联调机一致）构建，产物经 artifact 交给联调机 runner 换入
+#      （deploy.sh --prebuilt 会核对产物提交 = 联调机 HEAD）。这个私有仓库的免费分钟数没被别的流水线占用。
+#      build_on=server 是应急（联调机本机构建，会很慢）。
+#
+# 联调机侧一次性准备见 docs/PILOT_DEPLOY_RUNBOOK.md：注册本仓库的 runner（标签 pilot）、root 跑 bootstrap-server.sh、
+# nginx-site.py + certbot。工作流 Preflight 每次都把 tools/ops/ 复制到 /tmp/ms-ops/，root 从那里跑引导脚本。
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '只打印将要做什么，不拉代码、不构建、不重启'
+        type: boolean
+        default: true
+      build_on:
+        description: '在哪构建（hosted = GitHub 托管 runner 构建、联调机只换入；server = 联调机本机构建，应急）'
+        type: choice
+        default: hosted
+        options:
+          - hosted
+          - server
+
+concurrency:
+  group: deploy-pilot
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: inputs.build_on == 'hosted' && !inputs.dry_run && github.ref_name == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 联调机是 Node 20（evcharger RUNBOOK §2.9 实测），构建也用 20 保持一致
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Build（tools/ops/build-prebuilt.sh）
+        run: bash tools/ops/build-prebuilt.sh "$RUNNER_TEMP/prebuilt"
+
+      - name: Upload prebuilt
+        uses: actions/upload-artifact@v4
+        with:
+          name: prebuilt
+          path: ${{ runner.temp }}/prebuilt/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 3
+
+  deploy:
+    needs: build
+    if: ${{ !cancelled() && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
+    # 只在联调机的 runner 上跑（本仓库注册的 runner，标签 pilot）
+    runs-on: [self-hosted, pilot]
+    timeout-minutes: 40
+    env:
+      MS_REPO: /mnt/data/massage-starter
+
+    steps:
+      - name: 拒绝从 main 以外的分支部署
+        if: github.ref_name != 'main'
+        run: |
+          echo "::error::只能从 main 触发部署，当前是 ${{ github.ref_name }}"
+          exit 1
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Preflight（只读；并把 tools/ops 复制到 /tmp/ms-ops 供 root 跑引导脚本）
+        run: |
+          echo "runner 用户：$(id -un) (uid=$(id -u))  组：$(id -Gn)"
+          echo "node：$(command -v node || echo 无) $(node -v 2>/dev/null || true)"
+          rm -rf /tmp/ms-ops && mkdir -p /tmp/ms-ops && cp -a tools/ops/. /tmp/ms-ops/ && chmod -R a+rX /tmp/ms-ops
+          echo "tools/ops 已复制到 /tmp/ms-ops（root 一次性引导：sudo bash /tmp/ms-ops/bootstrap-server.sh）"
+          if [ ! -e "$MS_REPO" ]; then
+            echo "::error::$MS_REPO 不存在——先以 root 跑 sudo bash /tmp/ms-ops/bootstrap-server.sh（docs/PILOT_DEPLOY_RUNBOOK.md §2）"
+            exit 1
+          fi
+          if [ ! -w "$MS_REPO" ]; then
+            echo "::error::$MS_REPO 对 $(id -un) 不可写——bootstrap 的组授权没生效？runner 服务要重启一次：systemctl restart 'actions.runner.*'"
+            ls -ld "$MS_REPO"; exit 1
+          fi
+          if [ -d "$MS_REPO/.git" ]; then
+            if ! git config --global --get-all safe.directory 2>/dev/null | grep -qx "$MS_REPO"; then
+              git config --global --add safe.directory "$MS_REPO"
+            fi
+            echo "部署目标当前提交：$(git -C "$MS_REPO" log --oneline -1)"
+            echo "工作目录改动：$(git -C "$MS_REPO" status --porcelain --untracked-files=no | wc -l) 处（非 0 时 deploy.sh 会拒绝）"
+          else
+            echo "$MS_REPO 还没有代码，本次会首次 clone"
+          fi
+          echo "evidence-tuina：$(systemctl is-active evidence-tuina 2>&1 || true)"
+          [ -f "$MS_REPO/.env.production" ] && echo "✔ .env.production 存在" || echo "✘ 缺 .env.production（bootstrap 会写）"
+          sudo -n systemctl restart evidence-tuina --help >/dev/null 2>&1 && echo "✔ sudoers 允许重启 evidence-tuina" || echo "? sudoers 检查跳过（dry-run 不需要）"
+          free -h || true
+          df -h "$MS_REPO" || true
+
+      - name: 取托管 runner 预构建的产物
+        if: needs.build.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: prebuilt
+          path: ${{ runner.temp }}/prebuilt
+
+      - name: Deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          args=(-y)
+          if [ -f "$RUNNER_TEMP/prebuilt/BUILD_INFO" ]; then
+            args+=(--prebuilt "$RUNNER_TEMP/prebuilt")
+            echo "用托管 runner 的预构建产物：$(tr '\n' ' ' < "$RUNNER_TEMP/prebuilt/BUILD_INFO")"
+          fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            args+=(--dry-run)
+            echo "::notice::dry-run：不会拉代码、不会构建、不会重启"
+          fi
+          # 联调机那份仓库走 HTTPS，凭据用本 job 的临时令牌注入（随 job 结束失效，不落盘）
+          auth_b64=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          echo "::add-mask::$auth_b64"
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0='http.https://github.com/.extraheader'
+          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $auth_b64"
+          echo "执行：bash tools/ops/deploy.sh ${args[*]}"
+          set +e
+          bash tools/ops/deploy.sh "${args[@]}" 2>&1 | tee /tmp/ms-deploy-${{ github.run_id }}.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          exit "$rc"
+
+      - name: 失败后巡检
+        if: failure()
+        run: bash tools/ops/ms-status.sh || true
+
+      - name: 失败详情（放最后，保证落在日志尾部）
+        if: failure()
+        run: |
+          log=/tmp/ms-deploy-${{ github.run_id }}.log
+          [ -r "$log" ] || { echo "没有部署日志（Deploy 之前就失败了，原因见 Preflight）"; exit 0; }
+          echo "===== 部署输出的最后 60 行 ====="; tail -n 60 "$log"
+          echo; echo "===== 带 ✘ / 失败 / Error / denied 的行 ====="
+          grep -nE '✘|失败|[Ee]rror|denied|Permission|No such' "$log" | tail -n 30 || echo "（没有匹配到）"
