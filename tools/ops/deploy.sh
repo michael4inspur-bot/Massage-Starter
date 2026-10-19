@@ -149,7 +149,9 @@ fi
 
 # 动手前确认服务器侧引导已完成，否则会在 npm ci / 建库 / 换入之后才在重启这一步失败
 if [ -z "${MS_RESTART_CMD:-}" ]; then
-  if systemctl cat "$MS_SERVICE" >/dev/null 2>&1; then
+  # 问 systemd 的 LoadState（走 D-Bus，不读单元文件）。systemctl cat 要读文件，root 的 umask 是 077 时
+  # 单元文件对 ghrunner 不可读，会误报"没装"（2026-10-19 首次 dry-run）
+  if [ "$(systemctl show -p LoadState --value "$MS_SERVICE" 2>/dev/null)" = loaded ]; then
     ok "systemd 单元 $MS_SERVICE 已安装"
   elif [ "$DRY_RUN" = 1 ]; then
     warn "systemd 单元 $MS_SERVICE 还没装（root 跑 tools/ops/bootstrap-server.sh）"
