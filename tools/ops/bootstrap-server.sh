@@ -86,6 +86,7 @@ if [ -f "$UNIT" ] && cmp -s "$UNIT" "$UNIT.candidate"; then
 else
   [ -f "$UNIT" ] && cp -a "$UNIT" "$UNIT.bak-$(date +%Y%m%d-%H%M%S)"
   mv "$UNIT.candidate" "$UNIT"
+  chmod 644 "$UNIT"   # root 的 umask 可能是 077；单元文件应对所有人可读
   systemctl daemon-reload
   ok "已写 $UNIT（daemon-reload 完成）"
 fi
